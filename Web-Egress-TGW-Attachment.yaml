@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SBI Network Infrastructure - Transit Gateway VPC Attachment'
+
+Parameters:
+  SubnetMgmtTgwEniAz1Id:
+    Type: String
+    Description: Private subnet ID of TGW attachment in Availability Zone 1
+
+  SubnetMgmtTgwEniAz2Id:
+    Type: String
+    Description: Private subnet ID of TGW attachment in Availability Zone 2
+
+  IngressTgwId:
+    Type: String
+    Description: Ingress Transit Gateway ID  
+
+  EgressWebVPC:
+    Type: String
+    Description: VPC ID
+
+  ResourceName:
+    Type: String
+    Default: SBI-Network-TGW
+    Description: Centralized transit gateway for SBI Network account 
+
+  Environment:
+    Type: String
+    AllowedValues:
+      - development
+      - staging
+      - production
+    Description: Environment name for resource tagging
+
+  Owner:
+    Type: String
+    Default: "SBI-Network-Team"
+    Description: Owner tag value
+
+  Vendor:
+    Type: String
+    Default: ACC
+    Description: Vendor tag value
+
+Resources:
+  EgressWebVPCAttachment:
+    Type: AWS::EC2::TransitGatewayVpcAttachment
+    # DeletionPolicy: Retain
+    # UpdateReplacePolicy: Retain 
+    Properties:
+      SubnetIds: 
+        - !Ref SubnetMgmtTgwEniAz1Id
+        - !Ref SubnetMgmtTgwEniAz2Id
+      TransitGatewayId: !Ref IngressTgwId
+      VpcId: !Ref EgressWebVPC
+      Options:
+        ApplianceModeSupport: enable
+      Tags:
+        - Key: Name
+          Value: !Sub sbi_${ResourceName}_egress_web_vpc_attach
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+
+Outputs:
+  EgressWebTGWAttachmentId:
+    Description: Transit Gateway VPC Attachment ID
+    Value: !Ref EgressWebVPCAttachment
+    

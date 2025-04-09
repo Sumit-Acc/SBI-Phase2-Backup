@@ -1,0 +1,552 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SBI Egress VPC Route Tables and Associations Infrastructure'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: development
+    AllowedValues:
+      - development
+      - staging
+      - production
+    Description: Environment name for resource tagging
+
+  EgressWebVPC:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID
+
+  EgressWebIGW:
+    Type: String
+    Description: Internet gateway Id
+
+  SubnetNatAz1:
+    Type: AWS::EC2::Subnet::Id
+    Description: Public Subnet ID for NAT Gateway in AZ1
+
+  SubnetNatAz2:
+    Type: AWS::EC2::Subnet::Id
+    Description: Public Subnet ID for NAT Gateway in AZ2  
+
+  NatGatewayAz1:    # Changed from NatGatewayAz1Id
+    Type: String
+    Description: NAT Gateway ID for AZ1
+
+  NatGatewayAz2:    # Changed from NatGatewayAz2Id
+    Type: String
+    Description: NAT Gateway ID for AZ2
+
+  # SubnetNatAz1:
+  #   Type: String
+  #   Description: NAT Gateway ID for AZ1  
+
+  # SubnetNatAz2:
+  #   Type: String
+  #   Description: NAT Gateway ID for AZ2  
+
+  ResourceName:
+    Type: String
+    Default: sbi-project
+    Description: Resource name prefix 
+
+  EgressWebVPCCidr:
+    Type: String
+    Description: CIDR for Egress Web VPC
+    Default: 10.53.68.0/23
+ 
+  GwlbEndRTAssociation1aSubnetId: 
+    Type: AWS::EC2::Subnet::Id
+    Description: GWLB Endpoint Route Table Association 1a Subnet ID
+
+  GwlbEndRTAssociation1bSubnetId: 
+    Type: AWS::EC2::Subnet::Id
+    Description: GWLB Endpoint Route Table Association 1a Subnet ID
+
+  PubNat1aRTAssociation1aSubnetId: 
+    Type: AWS::EC2::Subnet::Id
+    Description: GWLB Endpoint Route Table Association 1a Subnet ID
+
+  PubNat1aRTAssociation1bSubnetId: 
+    Type: AWS::EC2::Subnet::Id
+    Description: GWLB Endpoint Route Table Association 1a Subnet ID
+
+  FwLanEniRTAssociation1aSubnetId: 
+    Type: AWS::EC2::Subnet::Id
+    Description: GWLB Endpoint Route Table Association 1a Subnet ID
+
+  FwLanEniRTAssociation1bSubnetId: 
+    Type: AWS::EC2::Subnet::Id
+    Description: GWLB Endpoint Route Table Association 1a Subnet ID
+
+  ProxyNlbRTAssociatione1aSubnetId: 
+    Type: AWS::EC2::Subnet::Id
+    Description: GWLB Endpoint Route Table Association 1a Subnet ID
+
+  ProxyNlbRTAssociatione1bSubnetId: 
+    Type: AWS::EC2::Subnet::Id
+    Description: GWLB Endpoint Route Table Association 1a Subnet ID
+
+  ProxyServerRTAssociation1aSubnetId: 
+    Type: AWS::EC2::Subnet::Id
+    Description: GWLB Endpoint Route Table Association 1a Subnet ID
+
+  ProxyServerRTAssociation1bSubnetId: 
+    Type: AWS::EC2::Subnet::Id
+    Description: GWLB Endpoint Route Table Association 1a Subnet ID
+
+  NlbDlpServerRTAssociation1aSubnetId: 
+    Type: AWS::EC2::Subnet::Id
+    Description: GWLB Endpoint Route Table Association 1a Subnet ID
+
+  NlbDlpServerRTAssociation1bSubnetId: 
+    Type: AWS::EC2::Subnet::Id
+    Description: GWLB Endpoint Route Table Association 1a Subnet ID
+
+  DlpServerRTAssociation1aSubnetId: 
+    Type: AWS::EC2::Subnet::Id
+    Description: GWLB Endpoint Route Table Association 1a Subnet ID
+
+  DlpServerRTAssociation1bSubnetId: 
+    Type: AWS::EC2::Subnet::Id
+    Description: GWLB Endpoint Route Table Association 1a Subnet ID
+
+  MgmtTgwEni1aRTAssociation1aSubnetId: 
+    Type: AWS::EC2::Subnet::Id
+    Description: GWLB Endpoint Route Table Association 1a Subnet ID
+
+  MgmtTgwEni1aRTAssociation1bSubnetId: 
+    Type: AWS::EC2::Subnet::Id
+    Description: GWLB Endpoint Route Table Association 1a Subnet ID
+
+
+
+Resources:
+   #Public Nat Route Table
+  PubNatRT1a:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EgressWebVPC
+        # Fn::ImportValue:
+        #  !Sub: '${EgressWebVpcStackName}-VpcID' 
+      Tags:
+        - Key: Name
+          Value: PubNatRT1a
+        - Key: Environment
+          Value: !Ref Environment
+
+  PubNatRT1b:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EgressWebVPC
+      #  Fn::ImportValue:
+      #    !Sub: '${EgressWebVpcStackName}-VpcID'
+      Tags:
+        - Key: Name
+          Value: PubNatRT1b
+        - Key: Environment
+          Value: !Ref Environment
+  
+
+   # Private Subnet Firewall GWLB Endpoint Route Tables
+  GwlbEndpointRouteTable1a:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EgressWebVPC
+        # Fn::ImportValue:
+        #  !Sub: '${EgressWebVpcStackName}-VpcID'
+      Tags:
+        - Key: Name
+          Value: GwlbEndpointRouteTable1a
+        - Key: Environment
+          Value: !Ref Environment
+
+  GwlbEndpointRouteTable1b:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EgressWebVPC
+        # Fn::ImportValue:
+        #  !Sub: '${EgressWebVpcStackName}-VpcID'
+      Tags:
+        - Key: Name
+          Value: GwlbEndpointRouteTable1b
+        - Key: Environment
+          Value: !Ref Environment
+
+
+  # Private Subnet Firewall ENI Route Tables
+  FwLanEniRT1a:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EgressWebVPC
+        # Fn::ImportValue:
+        #  !Sub: '${EgressWebVpcStackName}-VpcID'
+      Tags:
+        - Key: Name
+          Value: FwLanEniRT1a
+        - Key: Environment
+          Value: !Ref Environment
+
+  FwLanEniRT1b:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EgressWebVPC
+        # Fn::ImportValue:
+        #  !Sub: '${EgressWebVpcStackName}-VpcID'
+      Tags:
+        - Key: Name
+          Value: FwLanEniRT1b_rt
+        - Key: Environment
+          Value: !Ref Environment
+
+  #Proxy NLB Route Table
+  ProxyNlbRT1a:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EgressWebVPC
+        # Fn::ImportValue:
+        #  !Sub: '${EgressWebVpcStackName}-VpcID'
+      Tags:
+        - Key: Name
+          Value: ProxyNlbRT1a
+        - Key: Environment
+          Value: !Ref Environment
+
+  ProxyNlbRT1b:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EgressWebVPC
+        # Fn::ImportValue:
+        #  !Sub: '${EgressWebVpcStackName}-VpcID'
+      Tags:
+        - Key: Name
+          Value: ProxyNlbRT1b
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Web Proxy server Route Table
+  ProxyServerRT1a:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EgressWebVPC
+        # Fn::ImportValue:
+        #  !Sub: '${EgressWebVpcStackName}-VpcID'
+      Tags:
+        - Key: Name
+          Value: ProxyServerRT1a
+        - Key: Environment
+          Value: !Ref Environment
+
+  ProxyServerRT1b:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EgressWebVPC
+        # Fn::ImportValue:
+        #  !Sub: '${EgressWebVpcStackName}-VpcID'
+      Tags:
+        - Key: Name
+          Value: ProxyServerRT1b
+        - Key: Environment
+          Value: !Ref Environment
+
+  # DLP Route Tables
+  DlpServerRT1a:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EgressWebVPC
+        # Fn::ImportValue:
+        #  !Sub: '${EgressWebVpcStackName}-VpcID'
+      Tags:
+        - Key: Name
+          Value: DlpServerRT1a
+        - Key: Environment
+          Value: !Ref Environment
+
+  DlpServerRT1b:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EgressWebVPC 
+        # Fn::ImportValue:
+        #  !Sub: '${EgressWebVpcStackName}-VpcID'
+      Tags:
+        - Key: Name
+          Value: DlpServerRT1b
+        - Key: Environment
+          Value: !Ref Environment
+
+ #NLB DLP Server Route Table
+  NlbDlpServerRT1a:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EgressWebVPC
+        # Fn::ImportValue:
+        #  !Sub: '${EgressWebVpcStackName}-VpcID'
+      Tags:
+        - Key: Name
+          Value: NlbDlpServerRT1a
+        - Key: Environment
+          Value: !Ref Environment
+
+  NlbDlpServerRT1b:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EgressWebVPC
+        # Fn::ImportValue:
+        #  !Sub: '${EgressWebVpcStackName}-VpcID'
+      Tags:
+        - Key: Name
+          Value: NlbDlpServerRT1b
+        - Key: Environment
+          Value: !Ref Environment
+
+#MgmtTgwEni1a Route Table
+  MgmtTgwEni1aRT:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EgressWebVPC
+      Tags:
+        - Key: Name
+          Value: MgmtTgwEni1aRT
+        - Key: Environment
+          Value: !Ref Environment
+
+  MgmtTgwEni1bRT:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref EgressWebVPC
+      Tags:
+        - Key: Name
+          Value: MgmtTgwEni1bRT
+        - Key: Environment
+          Value: !Ref Environment
+
+
+    # Internet Routes for Public Subnets
+  PubnatRoute1a:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PubNatRT1a
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref EgressWebIGW
+        # Fn::ImportValue:
+        #  !Sub '${IGWId}-IGWId'
+
+  PubnatRoute1b:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PubNatRT1b
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref EgressWebIGW
+        # Fn::ImportValue:
+        #  !Sub '${IGWId}-IGWId'
+
+   # NAT Gateway Routes for Private Subnets
+  PrivateRouteAz1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref FwLanEniRT1a
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayAz1
+
+  PrivateRouteAz2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref FwLanEniRT1b
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGatewayAz2      
+
+
+  # Route Table Associations
+  GwlbEndRTAssociation1a:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref GwlbEndpointRouteTable1a
+      SubnetId: !Ref GwlbEndRTAssociation1aSubnetId
+      
+
+  GwlbEndRTAssociation1b:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref GwlbEndpointRouteTable1b
+      SubnetId: !Ref GwlbEndRTAssociation1bSubnetId 
+      
+  
+
+  FwLanEniRTAssociation1a:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref FwLanEniRT1a
+      SubnetId: !Ref FwLanEniRTAssociation1aSubnetId
+      
+
+  FwLanEniRTAssociation1b:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref FwLanEniRT1b
+      SubnetId: !Ref FwLanEniRTAssociation1bSubnetId
+      
+
+
+  ProxyNlbRTAssociatione1a:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref ProxyNlbRT1a
+      SubnetId: !Ref ProxyNlbRTAssociatione1aSubnetId
+      
+
+  ProxyNlbRTAssociatione1b:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref ProxyNlbRT1b
+      SubnetId: !Ref ProxyNlbRTAssociatione1bSubnetId 
+      
+
+
+  ProxyServerRTAssociation1a:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref ProxyServerRT1a
+      SubnetId: !Ref ProxyServerRTAssociation1aSubnetId
+      
+
+  ProxyServerRTAssociation1b:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref ProxyServerRT1b
+      SubnetId: !Ref ProxyServerRTAssociation1bSubnetId
+      
+ 
+
+  DlpServerRTAssociation1a:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref DlpServerRT1a
+      SubnetId: !Ref DlpServerRTAssociation1aSubnetId 
+      
+
+  DlpServerRTAssociation1b:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref DlpServerRT1b
+      SubnetId: !Ref DlpServerRTAssociation1bSubnetId
+      
+
+
+  NlbDlpServerRTAssociation1a:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref NlbDlpServerRT1a
+      SubnetId: !Ref NlbDlpServerRTAssociation1aSubnetId
+      
+
+  NlbDlpServerRTAssociation1b:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref NlbDlpServerRT1b
+      SubnetId: !Ref NlbDlpServerRTAssociation1bSubnetId
+      
+
+
+  MgmtTgwEni1aRTAssociation1a:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref MgmtTgwEni1aRT
+      SubnetId: !Ref MgmtTgwEni1aRTAssociation1aSubnetId
+      
+
+  MgmtTgwEni1bRTAssociation1b:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref MgmtTgwEni1bRT
+      SubnetId: !Ref MgmtTgwEni1aRTAssociation1bSubnetId
+      
+
+
+  PubNat1aRTAssociation1a:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PubNatRT1a
+      SubnetId: !Ref PubNat1aRTAssociation1aSubnetId
+      
+
+  PubNat1bRTAssociation1b:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PubNatRT1b
+      SubnetId: !Ref PubNat1aRTAssociation1bSubnetId
+      
+
+
+
+
+Outputs:
+
+  GwlbEndpointRouteTableAZ1Id:
+    Description: Private Subnet Firewall GWLB Endpoint 1a Route Table ID
+    Value: !Ref GwlbEndpointRouteTable1a
+
+  GwlbEndpointRouteTableAZ2Id:
+    Description: Private Subnet Firewall GWLB Endpoint 1b Route Table ID
+    Value: !Ref GwlbEndpointRouteTable1b
+
+
+  FwLanEniRTAZ1Id:
+    Description: Private Subnet Firewall ENI Route Table ID
+    Value: !Ref FwLanEniRT1a
+
+  FwLanEniRTAZ2Id:
+    Description: Private Subnet Firewall ENI Route Table ID
+    Value: !Ref FwLanEniRT1b
+
+
+  ProxyNlbRTAZ1Id:
+    Description: Proxy NLB Route Table ID
+    Value: !Ref ProxyNlbRT1a
+
+  ProxyNlbRTAZ2Id:
+    Description: Proxy NLB Route Table ID
+    Value: !Ref ProxyNlbRT1b
+
+
+  PubNatRT1aAZ1Id:
+    Description: Public Subnet NAT Route Table ID
+    Value: !Ref PubNatRT1a
+
+  PubNatRT1aAZ2Id:
+    Description: Public Subnet NAT Route Table ID
+    Value: !Ref PubNatRT1b
+ 
+
+  NlbDlpAz1RTId:
+    Description: NLB DLP Server Route table ID
+    Value: !Ref NlbDlpServerRT1a
+
+  NlbDlpAz2RTId:
+    Description: NLB DLP Server Route table ID
+    Value: !Ref NlbDlpServerRT1b
+
+
+  ProxyServerAz1RTId:
+    Description: Proxy Server Route table ID
+    Value: !Ref ProxyServerRT1a
+
+  ProxyServerAz2RTId:
+    Description: Proxy Server Route table ID
+    Value: !Ref ProxyServerRT1b
+
+
+  MgmtTgwEniAz1RTId:
+    Description: Proxy Server Route table ID
+    Value: !Ref MgmtTgwEni1aRT
+
+  MgmtTgwEniAz2RTId:
+    Description: Proxy Server Route table ID
+    Value: !Ref MgmtTgwEni1bRT
+
+
+  DlpAz1RTId:
+    Description: DLP AZ1 Route Table ID
+    Value: !Ref DlpServerRT1a
+
+  DlpAz2RTId:
+    Description: DLP AZ2 Route Table ID
+    Value: !Ref DlpServerRT1b
+

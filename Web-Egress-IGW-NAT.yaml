@@ -1,0 +1,144 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SBI Network Infrastructure - Internet Gateway and NAT Gateways'
+
+Parameters:
+  EgressWebVPC:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID
+
+  SubnetNatAz1:
+    Type: AWS::EC2::Subnet::Id
+    Description: Public Subnet ID for NAT Gateway in AZ1
+
+  SubnetNatAz2:
+    Type: AWS::EC2::Subnet::Id
+    Description: Public Subnet ID for NAT Gateway in AZ2
+
+  ResourceName:
+    Type: String
+    Default: egress-vpc-internet-gateway
+    Description: Name of the resources created throughout the module
+
+  Environment:
+    Type: String
+    AllowedValues:
+      - development
+      - staging
+      - production
+    Description: Environment name for resource tagging
+
+  Owner:
+    Type: String
+    Default: "SBI-Network-Team"
+    Description: Owner tag value
+
+  Vendor:
+    Type: String
+    Default: ACC
+    Description: Vendor tag value
+
+Resources:
+  # Internet Gateway
+  EgressWebIGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: Egress-vpc-igw
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+
+  IGWAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref EgressWebVPC
+      InternetGatewayId: !Ref EgressWebIGW
+
+  # NAT Gateway Resources for AZ1
+  EgressWebEipNatAz1:
+    Type: AWS::EC2::EIP
+    DependsOn: IGWAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourceName}-eip-nat-az1
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+
+  EgressWebNatAz1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      SubnetId: !Ref SubnetNatAz1
+      AllocationId: !GetAtt EgressWebEipNatAz1.AllocationId
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourceName}-nat-az1
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+
+  # NAT Gateway Resources for AZ2
+  EgressWebEipNatAz2:
+    Type: AWS::EC2::EIP
+    DependsOn: IGWAttachment
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourceName}-eip-nat-az2
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+
+  EgressWebNatAz2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      SubnetId: !Ref SubnetNatAz2
+      AllocationId: !GetAtt EgressWebEipNatAz2.AllocationId
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourceName}-nat-az2
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+
+Outputs:
+  IgwId:
+    Description: Internet Gateway ID
+    Value: !Ref EgressWebIGW
+
+  NatGatewayAz1:
+    Description: NAT Gateway ID in AZ1
+    Value: !Ref EgressWebNatAz1
+
+  NatGatewayAz2:
+    Description: NAT Gateway ID in AZ2
+    Value: !Ref EgressWebNatAz2
+
+  EipNatAz1PublicIP:
+    Description: Elastic IP for NAT Gateway in AZ1
+    Value: !Ref EgressWebEipNatAz1
+
+  EipNatAz2PublicIP:
+    Description: Elastic IP for NAT Gateway in AZ2
+    Value: !Ref EgressWebEipNatAz2
+
+  SubnetNatAz1:    # Changed from PubSubNatAz1 to match IGW-NAT template parameters
+    Description: NAT Gateway Subnet AZ1 ID
+    Value: !Ref SubnetNatAz1
+    Export:
+      Name: !Sub ${AWS::StackName}-SubnetNatAz1
+
+  SubnetNatAz2:    # Changed from PubSubNatAz2 to match IGW-NAT template parameters
+    Description: NAT Gateway Subnet AZ2 ID
+    Value: !Ref SubnetNatAz2
+    Export:
+      Name: !Sub ${AWS::StackName}-SubnetNatAz2 

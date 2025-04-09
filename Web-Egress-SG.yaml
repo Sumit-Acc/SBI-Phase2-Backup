@@ -1,0 +1,325 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SBI Network Infrastructure - Security Groups'
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID
+
+  OnPremMgmtIps:
+    Type: CommaDelimitedList
+    Description: On Prem Management IPs to access the FW
+    Default: "10.0.0.0/8"
+
+  ResourceName:
+    Type: String
+    Default: dist_ing
+    Description: Name of the resources created throughout the module
+
+  Environment:
+    Type: String
+    AllowedValues:
+      - development
+      - staging
+      - production
+    Description: Environment name for resource tagging
+
+  Owner:
+    Type: String
+    Default: "SBI-Network-Team"
+    Description: Owner tag value
+
+  Vendor:
+    Type: String
+    Default: ACC
+    Description: Vendor tag value
+
+Resources:
+  # Proxy NLB Security Group
+  EgressWebProxyNlbSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: egress_web_proxy_nlb_sg
+      GroupDescription: Security group for the Egress-Web Proxy NLB
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub sbi_${ResourceName}_proxy_nlb_sg
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+
+  # DLP NLB Security Group
+  EgressWebDlpNlbSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: egress_web_dlp_nlb_sg
+      GroupDescription: Security group for the Egress-Web DLP NLB
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub sbi_${ResourceName}_dlp_nlb_sg
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+
+  # FW LAN AZ1 Security Group
+  EgressWebFwLanAz1SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: egress_web_fw_lan_az1_sg
+      GroupDescription: Security group for the Egress-Web Fortinet FW LAN ENI AZ1
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: udp
+          FromPort: 6081
+          ToPort: 6081
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub sbi_${ResourceName}_fw_lan_az1_sg
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+
+  # FW LAN AZ2 Security Group
+  EgressWebFwLanAz2SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: egress_web_fw_lan_az2_sg
+      GroupDescription: Security group for the Egress-Web Fortinet FW LAN ENI AZ2
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: udp
+          FromPort: 6081
+          ToPort: 6081
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub sbi_${ResourceName}_fw_lan_az2_sg
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+
+  # FW MGMT AZ1 Security Group
+  EgressWebFwMgmtAz1SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: egress_web_fw_mgmt_az1_sg
+      GroupDescription: Security group for the Egress-Web Fortinet FW MGMT ENI AZ1
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Select [0, !Ref OnPremMgmtIps]
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Select [0, !Ref OnPremMgmtIps]
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub sbi_${ResourceName}_fw_mgmt_az1_sg
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+
+  # FW MGMT AZ2 Security Group
+  EgressWebFwMgmtAz2SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: egress_web_fw_mgmt_az2_sg
+      GroupDescription: Security group for the Egress-Web Fortinet FW MGMT ENI AZ2
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Select [0, !Ref OnPremMgmtIps]
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Select [0, !Ref OnPremMgmtIps]
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub sbi_${ResourceName}_fw_mgmt_az2_sg
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+
+  # Proxy Security Group
+  EgressWebProxySG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: egress_web_proxy_sg
+      GroupDescription: Security group for the Egress-Web Proxy
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub sbi_${ResourceName}_proxy_sg
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+
+  # DLP Security Group
+  EgressWebDlpSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: egress_web_dlp_sg
+      GroupDescription: Security group for the Egress-Web DLP
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: -1
+          ToPort: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub sbi_${ResourceName}_dlp_sg
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+
+Outputs:
+  EgressWebProxyNlbSGId:
+    Description: Security Group ID for Proxy NLB
+    Value: !Ref EgressWebProxyNlbSG
+    Export:
+      Name: !Sub ${AWS::StackName}-ProxyNlbSGId
+
+  EgressWebDlpNlbSGId:
+    Description: Security Group ID for DLP NLB
+    Value: !Ref EgressWebDlpNlbSG
+    Export:
+      Name: !Sub ${AWS::StackName}-DlpNlbSGId
+
+  EgressWebFwLanAz1SGId:
+    Description: Security Group ID for FW LAN AZ1
+    Value: !Ref EgressWebFwLanAz1SG
+    Export:
+      Name: !Sub ${AWS::StackName}-FwLanAz1SGId
+
+  EgressWebFwLanAz2SGId:
+    Description: Security Group ID for FW LAN AZ2
+    Value: !Ref EgressWebFwLanAz2SG
+    Export:
+      Name: !Sub ${AWS::StackName}-FwLanAz2SGId
+
+  EgressWebFwMgmtAz1SGId:
+    Description: Security Group ID for FW MGMT AZ1
+    Value: !Ref EgressWebFwMgmtAz1SG
+    Export:
+      Name: !Sub ${AWS::StackName}-FwMgmtAz1SGId
+
+  EgressWebFwMgmtAz2SGId:
+    Description: Security Group ID for FW MGMT AZ2
+    Value: !Ref EgressWebFwMgmtAz2SG
+    Export:
+      Name: !Sub ${AWS::StackName}-FwMgmtAz2SGId
+
+  EgressWebProxySGId:
+    Description: Security Group ID for Proxy
+    Value: !Ref EgressWebProxySG
+    Export:
+      Name: !Sub ${AWS::StackName}-ProxySGId
+
+  EgressWebDlpSGId:
+    Description: Security Group ID for DLP
+    Value: !Ref EgressWebDlpSG
+    Export:
+      Name: !Sub ${AWS::StackName}-DlpSGId

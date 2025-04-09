@@ -1,0 +1,195 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: 'SBI Network Infrastructure - AWS Transit gateway with its attachments'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: development
+    AllowedValues:
+      - development
+      - staging
+      - production
+    Description: Environment name for resource tagging
+
+  GwlbEndpointRouteTableAZ1Id:
+    Type: String
+    Description: GWLB Endpoint Route Table 1a ID
+
+  GwlbEndpointRouteTableAZ2Id:
+    Type: String
+    Description: GWLB Endpoint Route Table 1b ID
+
+  # FwLanEniRTAZ1Id:
+  #   Type: String
+  #   Description: Private Subnet Firewall ENI Route Table 1a ID
+
+  # FwLanEniRTAZ2Id:
+  #   Type: String
+  #   Description: Private Subnet Firewall ENI Route Table 1b ID
+
+  ProxyNlbRTAZ1Id:
+    Type: String
+    Description: Proxy NLB Route Table 1a ID
+
+  ProxyNlbRTAZ2Id:
+    Type: String
+    Description: Proxy NLB Route Table 1b ID
+
+  # PubNatRT1aAZ1Id:
+  #   Type: String
+  #   Description: Public Subnet NAT Route Table 1a ID
+
+  # PubNatRT1aAZ2Id:
+  #   Type: String
+  #   Description: Public Subnet NAT Route Table 1b ID
+
+  ProxyServerAz1RTId:
+    Type: String
+    Description: Web Proxy Sever Route Table 1a ID
+
+  ProxyServerAz2RTId:
+    Type: String
+    Description: Web Proxy Sever Route Table 1b ID
+
+  NlbDlpAz1RTId:
+    Type: String
+    Description: NLB DLP server Route Table 1a ID
+
+  NlbDlpAz2RTId:
+    Type: String
+    Description: NLB DLP server Route Table 1b ID
+
+  DlpAz1RTId:
+    Type: String
+    Description: DLP AZ1 Route Table 1a ID
+
+  DlpAz2RTId:
+    Type: String
+    Description: DLP AZ1 Route Table 1b ID
+  
+  MgmtTgwEniAz1RTId:
+    Type: String
+    Description: Management TGW ENI Route Table 1a ID
+
+  MgmtTgwEniAz2RTId:
+    Type: String
+    Description: Management TGW ENI Route Table 1b ID
+  
+  TransitGatewayId: 
+    Type: String
+    Description: Transit Gateway ID
+
+Resources:
+  # GWLB Endpoint Routes
+  GwlbEndpointRouteTable1aRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: GwlbEndpointRouteTableAZ1Id
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId:
+        Ref: TransitGatewayId
+
+  GwlbEndpointRouteTable1bRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: GwlbEndpointRouteTableAZ2Id
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId:
+        Ref: TransitGatewayId
+
+  # Proxy NLB Routes
+  ProxyNlbRouteTable1aRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: ProxyNlbRTAZ1Id
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId:
+        Ref: TransitGatewayId
+  
+  ProxyNlbRouteTable1bRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: ProxyNlbRTAZ2Id
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId:
+        Ref: TransitGatewayId
+
+  # NLB DLP Routes
+  NlbDlpRouteTable1aRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: NlbDlpAz1RTId
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId:
+        Ref: TransitGatewayId
+
+  NlbDlpRouteTable1bRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: NlbDlpAz2RTId
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId:
+        Ref: TransitGatewayId
+
+  # Proxy Server Routes
+  ProxyServerRT1aRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: ProxyServerAz1RTId
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId:
+        Ref: TransitGatewayId
+
+  ProxyServerRT1bRoutee:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId:
+        Ref: ProxyServerAz2RTId
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId:
+        Ref: TransitGatewayId
+
+  # DLP Server Routes
+  DlpServerRT1aRoute:
+    Type: AWS::EC2::Route   
+    Properties:
+      RouteTableId:
+        Ref: DlpAz1RTId
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId:
+        Ref: TransitGatewayId
+
+  DlpServerRT1bRoute:
+    Type: AWS::EC2::Route   
+    Properties:
+      RouteTableId:
+        Ref: DlpAz2RTId
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId:
+        Ref: TransitGatewayId
+
+  # TGW Management Eni Routes
+  TgwMgmteniRT1aRoute:
+    Type: AWS::EC2::Route   
+    Properties:
+      RouteTableId:
+        Ref: MgmtTgwEniAz1RTId
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId:
+        Ref: TransitGatewayId
+
+  TgwMgmteniRT1bRoute:
+    Type: AWS::EC2::Route   
+    Properties:
+      RouteTableId:
+        Ref: MgmtTgwEniAz2RTId
+      DestinationCidrBlock: 0.0.0.0/0
+      TransitGatewayId:
+        Ref: TransitGatewayId

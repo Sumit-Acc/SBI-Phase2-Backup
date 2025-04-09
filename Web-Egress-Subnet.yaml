@@ -1,0 +1,465 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SBI Egress VPC Subnet Infrastructure'
+
+Parameters:
+  EgressWebVPC:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID for subnet creation
+
+  ResourceName:
+    Type: String
+    Default: sbi-project
+    Description: Name of the resources created throughout the module
+
+  Environment:
+    Type: String
+    Description: Environment name for resource tagging
+    AllowedValues:
+      - development
+      - staging
+      - production
+
+  Owner:
+    Type: String
+    Description: Owner tag value
+    Default: "SBI-Network-Team"
+
+  Vendor:
+    Type: String
+    Default: ACC
+    Description: Vendor tag value
+
+  EgressWebVpcCidr:
+    Type: String
+    Default: "10.53.68.0/23"
+    Description: VPC CIDR
+
+Resources:
+  # GWLB Endpoint Subnets
+  SubnetGwlbEndAz1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref EgressWebVPC
+      CidrBlock: 10.53.68.192/28
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: SBI-Egress-Web-GWLB-E-1a
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+        - Key: Project
+          Value: SBI
+        - Key: Application
+          Value: Egress-Web
+
+  SubnetGwlbEndAz2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref EgressWebVPC
+      CidrBlock: 10.53.68.208/28
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: SBI-Egress-Web-GWLB-E-1b
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+        - Key: Project
+          Value: SBI
+        - Key: Application
+          Value: Egress-Web
+
+  # NAT Gateway Subnets
+  SubnetNatAz1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref EgressWebVPC
+      CidrBlock: 10.53.68.240/28
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true    # Add this for public subnets
+      Tags:
+        - Key: Name
+          Value: SBI-Egress-Web-Pub/NAT-1a
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+        - Key: Project
+          Value: SBI
+        - Key: Application
+          Value: Egress-Web
+
+  SubnetNatAz2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref EgressWebVPC
+      CidrBlock: 10.53.68.224/28
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: true    # Add this for public subnets
+      Tags:
+        - Key: Name
+          Value: SBI-Egress-Web-Pub/NAT-1b
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+        - Key: Project
+          Value: SBI
+        - Key: Application
+          Value: Egress-Web
+
+  # Firewall LAN Subnets
+  SubnetFwLanAz1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref EgressWebVPC
+      CidrBlock: 10.53.69.0/26
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: SBI-Egress-Web-FW-LAN-ENI-1a
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+        - Key: Project
+          Value: SBI
+        - Key: Application
+          Value: Egress-Web
+
+  SubnetFwLanAz2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref EgressWebVPC
+      CidrBlock: 10.53.69.64/26
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: SBI-Egress-Web-FW-LAN-ENI-1b
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+        - Key: Project
+          Value: SBI
+        - Key: Application
+          Value: Egress-Web
+
+  # Proxy NLB Subnets
+  SubnetProxyNlbAz1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref EgressWebVPC
+      CidrBlock: 10.53.68.0/28
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: SBI-Egress-proxyNLB-1a
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+        - Key: Project
+          Value: SBI
+        - Key: Application
+          Value: Egress-Web
+
+  SubnetProxyNlbAz2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref EgressWebVPC
+      CidrBlock: 10.53.68.16/28
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: SBI-Egress-proxyNLB-1b
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+        - Key: Project
+          Value: SBI
+        - Key: Application
+          Value: Egress-Web
+
+  # Proxy Server Subnets
+  SubnetProxyServerAz1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref EgressWebVPC
+      CidrBlock: 10.53.68.32/27
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: SBI-Egress-Web-proxy-server-1a
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+        - Key: Project
+          Value: SBI
+        - Key: Application
+          Value: Egress-Web
+
+  SubnetProxyServerAz2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref EgressWebVPC
+      CidrBlock: 10.53.68.64/27
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: SBI-Egress-Web-proxy-server-1b
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+        - Key: Project
+          Value: SBI
+        - Key: Application
+          Value: Egress-Web
+
+  # DLP NLB Subnets
+  SubnetNlbDlpServerAz1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref EgressWebVPC
+      CidrBlock: 10.53.68.96/28
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: SBI-Egress-Web-NLB-DLP-server-1a
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+        - Key: Project
+          Value: SBI
+        - Key: Application
+          Value: Egress-Web
+
+  SubnetNlbDlpServerAz2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref EgressWebVPC
+      CidrBlock: 10.53.68.112/28
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: SBI-Egress-Web-NLB-DLP-server-1b
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+        - Key: Project
+          Value: SBI
+        - Key: Application
+          Value: Egress-Web
+
+  # DLP Server Subnets
+  SubnetDlpServerAz1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref EgressWebVPC
+      CidrBlock: 10.53.68.128/27
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: SBI-Egress-Web-DLP-server-1a
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+        - Key: Project
+          Value: SBI
+        - Key: Application
+          Value: Egress-Web
+
+  SubnetDlpServerAz2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref EgressWebVPC
+      CidrBlock: 10.53.68.160/27
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: SBI-Egress-Web-DLP-server-1b
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+        - Key: Project
+          Value: SBI
+        - Key: Application
+          Value: Egress-Web
+
+  # Management TGW ENI Subnets
+  SubnetMgmtTgwEniAz1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref EgressWebVPC
+      CidrBlock: 10.53.69.128/28
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: SBI-Egress-Web-Mgmt-TGW-ENI-1a
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+        - Key: Project
+          Value: SBI
+        - Key: Application
+          Value: Egress-Web
+
+  SubnetMgmtTgwEniAz2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref EgressWebVPC
+      CidrBlock: 10.53.69.144/28
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: SBI-Egress-Web-Mgmt-TGW-ENI-1b
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+        - Key: Project
+          Value: SBI
+        - Key: Application
+          Value: Egress-Web
+
+Outputs:
+  SubnetGwlbEndAz1:
+    Description: GWLB Endpoint Subnet AZ1 ID
+    Value: !Ref SubnetGwlbEndAz1
+    # Export:
+    #   Name: !Sub ${AWS::StackName}-GwlbEndAz1SubnetId
+
+  SubnetGwlbEndAz2:
+    Description: GWLB Endpoint Subnet AZ2 ID
+    Value: !Ref SubnetGwlbEndAz2
+    # Export:
+    #   Name: !Sub ${AWS::StackName}-GwlbEndAz2SubnetId
+
+  SubnetNatAz1:
+    Description: NAT Gateway Subnet AZ1 ID
+    Value: !Ref SubnetNatAz1
+    # Export:
+    #   Name: !Sub ${AWS::StackName}-NatAz1SubnetId
+
+  SubnetNatAz2:
+    Description: NAT Gateway Subnet AZ2 ID
+    Value: !Ref SubnetNatAz2
+    # Export:
+    #   Name: !Sub ${AWS::StackName}-NatAz2SubnetId
+
+  SubnetFwLanAz1:
+    Description: Firewall LAN Subnet AZ1 ID
+    Value: !Ref SubnetFwLanAz1
+    # Export:
+    #   Name: !Sub ${AWS::StackName}-FwLanAz1SubnetId
+
+  SubnetFwLanAz2:
+    Description: Firewall LAN Subnet AZ2 ID
+    Value: !Ref SubnetFwLanAz2
+    # Export:
+    #   Name: !Sub ${AWS::StackName}-FwLanAz2SubnetId
+
+  SubnetProxyNlbAz1:
+    Description: Proxy NLB Subnet AZ1 ID
+    Value: !Ref SubnetProxyNlbAz1
+    # Export:
+    #   Name: !Sub ${AWS::StackName}-ProxyNlbAz1SubnetId
+
+  SubnetProxyNlbAz2:
+    Description: Proxy NLB Subnet AZ2 ID
+    Value: !Ref SubnetProxyNlbAz2
+    # Export:
+    #   Name: !Sub ${AWS::StackName}-ProxyNlbAz2SubnetId
+
+  SubnetProxyServerAz1:
+    Description: Proxy Server Subnet AZ1 ID
+    Value: !Ref SubnetProxyServerAz1
+    # Export:
+    #   Name: !Sub ${AWS::StackName}-ProxyServerAz1SubnetId
+
+  SubnetProxyServerAz2:
+    Description: Proxy Server Subnet AZ2 ID
+    Value: !Ref SubnetProxyServerAz2
+    # Export:
+    #   Name: !Sub ${AWS::StackName}-ProxyServerAz2SubnetId
+
+  SubnetNlbDlpServerAz1:
+    Description: NLB DLP Server Subnet AZ1 ID
+    Value: !Ref SubnetNlbDlpServerAz1
+    # Export:
+    #   Name: !Sub ${AWS::StackName}-NlbDlpServerAz1SubnetId
+
+  SubnetNlbDlpServerAz2:
+    Description: NLB DLP Server Subnet AZ2 ID
+    Value: !Ref SubnetNlbDlpServerAz2
+    # Export:
+    #   Name: !Sub ${AWS::StackName}-NlbDlpServerAz2SubnetId
+
+  SubnetDlpServerAz1:
+    Description: DLP Server Subnet AZ1 ID
+    Value: !Ref SubnetDlpServerAz1
+    # Export:
+    #   Name: !Sub ${AWS::StackName}-DlpServerAz1SubnetId
+
+  SubnetDlpServerAz2:
+    Description: DLP Server Subnet AZ2 ID
+    Value: !Ref SubnetDlpServerAz2
+    # Export:
+    #   Name: !Sub ${AWS::StackName}-DlpServerAz2SubnetId
+
+  SubnetMgmtTgwEniAz1:
+    Description: Management TGW ENI Subnet AZ1 ID
+    Value: !Ref SubnetMgmtTgwEniAz1
+    # Export:
+    #   Name: !Sub ${AWS::StackName}-MgmtTgwEniAz1SubnetId
+
+  SubnetMgmtTgwEniAz2:
+    Description: Management TGW ENI Subnet AZ2 ID
+    Value: !Ref SubnetMgmtTgwEniAz2
+    # Export:
+    #   Name: !Sub ${AWS::StackName}-MgmtTgwEniAz2SubnetId
+
+
