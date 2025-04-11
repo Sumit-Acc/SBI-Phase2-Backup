@@ -1,0 +1,189 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Network Load Balancer Infrastructure Setup'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: development
+    AllowedValues:
+      - development
+      - staging
+      - production
+    Description: Environment name for resource tagging
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID for NLB creation
+
+  ResourceName:
+    Type: String
+    Default: 'dist_ing'
+    Description: Base name for resources
+
+  Owner:
+    Type: String
+    Description: Owner tag value
+
+  ProxyNlbName:
+    Type: String
+    Description: Name for Proxy NLB
+
+  DlpNlbName:
+    Type: String
+    Description: Name for DLP NLB
+
+  ProxySubnetsAz1:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subnet ID for Proxy NLB in AZ1
+
+  ProxySubnetsAz2:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subnet ID for Proxy NLB in AZ2
+
+  DlpSubnetsAz1:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subnet ID for DLP NLB in AZ1
+
+  DlpSubnetsAz2:
+    Type: AWS::EC2::Subnet::Id
+    Description: Subnet ID for DLP NLB in AZ2
+
+  ProxyTargetPort:
+    Type: Number
+    Description: Port for Proxy target group
+    Default: 80
+
+  DlpTargetPort:
+    Type: Number
+    Description: Port for DLP target group
+    Default: 80
+
+Resources:
+  # Proxy NLB
+  ProxyNetworkLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Ref ProxyNlbName
+      Type: network
+      Scheme: internal
+      Subnets: 
+        - !Ref ProxySubnetsAz1
+        - !Ref ProxySubnetsAz2
+      LoadBalancerAttributes:
+        - Key: load_balancing.cross_zone.enabled
+          Value: 'true'
+        - Key: deletion_protection.enabled
+          Value: 'true'
+      Tags:
+        - Key: Name
+          Value: !Sub sbi_${ResourceName}_proxy_nlb
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+
+  # Proxy Target Group
+  ProxyTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub ${ResourceName}-proxy-tg
+      Port: !Ref ProxyTargetPort
+      Protocol: TCP
+      VpcId: !Ref VpcId
+      TargetType: ip
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 3
+      Tags:
+        - Key: Name
+          Value: !Sub sbi_${ResourceName}_proxy_nlb_tg
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+
+  # Proxy Listener
+  ProxyListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ProxyNetworkLoadBalancer
+      Port: !Ref ProxyTargetPort
+      Protocol: TCP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ProxyTargetGroup
+
+  # DLP NLB
+  DlpNetworkLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Ref DlpNlbName
+      Type: network
+      Scheme: internal
+      Subnets: 
+        - !Ref DlpSubnetsAz1
+        - !Ref DlpSubnetsAz2
+      LoadBalancerAttributes:
+        - Key: load_balancing.cross_zone.enabled
+          Value: 'true'
+        - Key: deletion_protection.enabled
+          Value: 'true'
+      Tags:
+        - Key: Name
+          Value: !Sub sbi_${ResourceName}_dlp_nlb
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+
+  # DLP Target Group
+  DlpTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub ${ResourceName}-dlp-tg
+      Port: !Ref DlpTargetPort
+      Protocol: TCP
+      VpcId: !Ref VpcId
+      TargetType: ip
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 10
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 3
+      Tags:
+        - Key: Name
+          Value: !Sub sbi_${ResourceName}_dlp_nlb_tg
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+
+  # DLP Listener
+  DlpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref DlpNetworkLoadBalancer
+      Port: !Ref DlpTargetPort
+      Protocol: TCP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref DlpTargetGroup
+
+Outputs:
+  ProxyNlbArn:
+    Description: ARN of the Proxy Network Load Balancer
+    Value: !Ref ProxyNetworkLoadBalancer
+
+  DlpNlbArn:
+    Description: ARN of the DLP Network Load Balancer
+    Value: !Ref DlpNetworkLoadBalancer
+
+  ProxyTargetGroupArn:
+    Description: ARN of the Proxy Target Group
+    Value: !Ref ProxyTargetGroup
+
+  DlpTargetGroupArn:
+    Description: ARN of the DLP Target Group
+    Value: !Ref DlpTargetGroup

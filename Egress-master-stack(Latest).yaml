@@ -1,0 +1,653 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'SBI Network Infrastructure - Main Stack'
+
+
+Parameters:
+  Environment:
+    Type: String
+    Default: development
+    AllowedValues:
+      - development
+      - staging
+      - production
+    Description: Environment name for resource tagging
+  
+  TemplateURL:
+    Description: Template URL for vpc nested stack
+    Type: String
+    Default: https://shruti-cf-ingress-vpc-nested-stack-bucket-2025-04-04.s3.ap-south-1.amazonaws.com/egress-vpc1.yaml
+
+  TemplateURLSubnet:
+    Description: Template URL for subnet nested stack
+    Type: String
+    Default: https://shruti-cf-ingress-vpc-nested-stack-bucket-2025-04-04.s3.ap-south-1.amazonaws.com/hitesh-subnet-7.30pm.yml
+
+  TemplateURLIGWNAT:
+    Description: Template URL for combined IGW and NAT Gateway stack
+    Type: String
+    Default: https://shruti-cf-ingress-vpc-nested-stack-bucket-2025-04-04.s3.ap-south-1.amazonaws.com/internet-Nat-gateway-egress-v0.1.yml
+  
+  TemplateURLRT:
+    Description: Template URL for RT nested stack
+    Type: String
+    Default: https://shruti-cf-ingress-vpc-nested-stack-bucket-2025-04-04.s3.ap-south-1.amazonaws.com/sumit-rt-web-egress-acc.yml
+
+  TemplateURLSecurityGroups:
+    Description: Template URL for Security Groups stack
+    Type: String
+    Default: https://shruti-cf-ingress-vpc-nested-stack-bucket-2025-04-04.s3.ap-south-1.amazonaws.com/sg-egress.yaml  
+
+  TemplateURLSubnetRoute:
+    Description: Template URL for Private subnet Route nested stack
+    Type: String
+    Default: https://shruti-cf-ingress-vpc-nested-stack-bucket-2025-04-04.s3.ap-south-1.amazonaws.com/sumit-subnetroutes-acc.yaml
+   
+  TemplateURLGWLB:
+    Description: Template URL for Gateway Load Balancer and Endpoints stack
+    Type: String
+    Default: https://shruti-cf-ingress-vpc-nested-stack-bucket-2025-04-04.s3.ap-south-1.amazonaws.com/GWLB-EGRESS.yaml
+
+  # TemplateURLVPCEndpoints:
+  #   Description: Template URL for VPC Endpoints stack
+  #   Type: String
+  #   Default: https://shruti-cf-ingress-vpc-nested-stack-bucket-2025-04-04.s3.ap-south-1.amazonaws.com/vpc-endpoint-egress.yaml
+
+  # TemplateURLTGW:
+  #   Description: Template URL for Transit Gateway stack
+  #   Type: String
+  #   Default: https://shruti-cf-ingress-vpc-nested-stack-bucket-2025-04-04.s3.ap-south-1.amazonaws.com/network-tgw.yaml
+
+  TransitGatewayID:
+    Description: Transit Gateway ID for TGW Attachment stack
+    Type: String
+    Default: tgw-022f65e7b716f7e3a
+
+  TemplateURLTGWAttachment:
+    Description: Template URL for Transit Gateway Attachment stack
+    Type: String
+    Default: https://shruti-cf-ingress-vpc-nested-stack-bucket-2025-04-04.s3.ap-south-1.amazonaws.com/Egress-web-tgw-attachment.yml
+
+  TemplateURLNetworkAppliance:
+    Description: Template URL for Transit Gateway Attachment stack
+    Type: String
+    Default: https://shruti-cf-ingress-vpc-nested-stack-bucket-2025-04-04.s3.ap-south-1.amazonaws.com/Ec2-NA-Final-SBI.yaml
+    
+  TemplateURLNLB:
+    Description: Template URL for Network Load Balancer stack
+    Type: String
+    Default: https://shruti-cf-ingress-vpc-nested-stack-bucket-2025-04-04.s3.ap-south-1.amazonaws.com/NLB-EGRESS.yaml
+  
+  OnPremMgmtIps:
+    Type: CommaDelimitedList
+    Description: On Prem Management IPs to access the FW
+    Default: "10.0.0.0/8"
+
+  # EgressWebGwlbArn:
+  #   Type: String
+  #   Description: ARN of the Gateway Load Balancer for VPC Endpoint Service
+
+  Owner:
+    Type: String
+    Default: "SBI-Network-Team"
+    Description: Owner tag value
+
+  Vendor:
+    Type: String
+    Default: ACC
+    Description: Vendor tag value
+
+  ResourceName:
+    Type: String
+    Default: sbi-project
+
+    Description: Name of the resources created throughout the module
+  # KMS Key
+  # EbsKmsArn:
+  #   Type: String
+  #   Description: ARN of the KMS key used for EBS encryption  
+
+Resources: 
+ # VPC Stack
+  VPCStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Ref TemplateURL
+      Parameters:
+        Environment: !Ref Environment
+      TimeoutInMinutes: 30
+      Tags:
+        - Key: Name
+          Value: SBI-VPC-Stack
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Subnet Stack
+  SubnetStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: VPCStack
+    Properties:
+      TemplateURL: !Ref TemplateURLSubnet
+      Parameters:
+        Environment: !Ref Environment
+        EgressWebVPC: !GetAtt VPCStack.Outputs.VpcId
+        EgressWebVpcCidr: !GetAtt VPCStack.Outputs.VpcCidr
+      TimeoutInMinutes: 30
+      Tags:
+        - Key: Name
+          Value: SBI-Subnet-Stack
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Security Groups Stack
+  SecurityGroupsStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: VPCStack
+    Properties:
+      TemplateURL: !Ref TemplateURLSecurityGroups
+      Parameters:
+        Environment: !Ref Environment
+        VpcId: !GetAtt VPCStack.Outputs.VpcId
+        OnPremMgmtIps: !Join [",", !Ref OnPremMgmtIps]
+        ResourceName: !Ref ResourceName
+        Owner: !Ref Owner
+        Vendor: !Ref Vendor
+      TimeoutInMinutes: 30
+      Tags:
+        - Key: Name
+          Value: SBI-Security-Groups-Stack
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor        
+
+  # Combined IGW and NAT Gateway Stack
+  IGWNATStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: 
+      - VPCStack
+      - SubnetStack
+    Properties:
+      TemplateURL: !Ref TemplateURLIGWNAT
+      Parameters:
+        Environment: !Ref Environment
+        EgressWebVPC: !GetAtt VPCStack.Outputs.VpcId
+        SubnetNatAz1: !GetAtt SubnetStack.Outputs.SubnetNatAz1    # Changed from PubSubNatAz1
+        SubnetNatAz2: !GetAtt SubnetStack.Outputs.SubnetNatAz2
+        ResourceName: !Ref ResourceName
+        Owner: !Ref Owner
+        Vendor: !Ref Vendor
+      TimeoutInMinutes: 30
+      Tags:
+        - Key: Name
+          Value: SBI-IGW-NAT-Stack
+        - Key: Environment
+          Value: !Ref Environment
+
+  # # VPC Endpoints Stack
+  # VPCEndpointsStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   DependsOn: 
+  #     - VPCStack
+  #     - SubnetStack
+  #   Properties:
+  #     TemplateURL: !Ref TemplateURLVPCEndpoints
+  #     Parameters:
+  #       VpcId: !GetAtt VPCStack.Outputs.VpcId
+  #       SubnetGwlbEndAz1Id: !GetAtt SubnetStack.Outputs.SubnetGwlbEndAz1
+  #       SubnetGwlbEndAz2Id: !GetAtt SubnetStack.Outputs.SubnetGwlbEndAz2
+  #       EgressWebGwlbArn: !Ref EgressWebGwlbArn
+  #       ResourceName: !Ref ResourceName
+  #       Environment: !Ref Environment
+  #       Owner: !Ref Owner
+  #       Vendor: !Ref Vendor
+  #     TimeoutInMinutes: 30
+  #     Tags:
+  #       - Key: Name
+  #         Value: SBI-VPC-Endpoints-Stack
+  #       - Key: Environment
+  #         Value: !Ref Environment
+  #       - Key: Owner
+  #         Value: !Ref Owner
+  #       - Key: Vendor
+  #         Value: !Ref Vendor
+        
+    
+  # Transit Gateway Stack
+  # TransitGatewayStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   Properties:
+  #     TemplateURL: !Ref TemplateURLTGW
+  #     Parameters:
+  #       Environment: !Ref Environment
+  #       ResourceName: !Ref ResourceName
+  #       Owner: !Ref Owner
+  #       Vendor: !Ref Vendor
+  #     TimeoutInMinutes: 30
+  #     Tags:
+  #       - Key: Name
+  #         Value: SBI-TGW-Stack
+  #       - Key: Environment
+  #         Value: !Ref Environment  
+  # Transit Gateway Attachment Stack
+  TGWAttachmentStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: 
+      - VPCStack
+      - SubnetStack
+      # - TransitGatewayStack
+    Properties:
+      TemplateURL: !Ref TemplateURLTGWAttachment
+      Parameters:
+        Environment: !Ref Environment
+        IngressTgwId: !Ref TransitGatewayID
+        EgressWebVPC: !GetAtt VPCStack.Outputs.VpcId
+        SubnetMgmtTgwEniAz1Id: !GetAtt SubnetStack.Outputs.SubnetMgmtTgwEniAz1
+        SubnetMgmtTgwEniAz2Id: !GetAtt SubnetStack.Outputs.SubnetMgmtTgwEniAz2
+        ResourceName: !Ref ResourceName
+        Owner: !Ref Owner
+        Vendor: !Ref Vendor
+      TimeoutInMinutes: 30
+      Tags:
+        - Key: Name
+          Value: SBI-TGW-Attachment-Stack
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Route Table Stack
+  RouteTableStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: 
+      - VPCStack
+      - SubnetStack
+      - IGWNATStack
+    Properties:
+      TemplateURL: !Ref TemplateURLRT
+      Parameters:    
+        Environment: !Ref Environment
+        EgressWebVPC: !GetAtt VPCStack.Outputs.VpcId
+        EgressWebVPCCidr: !GetAtt VPCStack.Outputs.VpcCidr
+        EgressWebIGW: !GetAtt IGWNATStack.Outputs.IgwId
+        NatGatewayAz1: !GetAtt IGWNATStack.Outputs.NatGatewayAz1
+        NatGatewayAz2: !GetAtt IGWNATStack.Outputs.NatGatewayAz2
+        SubnetNatAz1: !GetAtt SubnetStack.Outputs.SubnetNatAz1
+        SubnetNatAz2: !GetAtt SubnetStack.Outputs.SubnetNatAz2
+        GwlbEndRTAssociation1aSubnetId: !GetAtt SubnetStack.Outputs.SubnetGwlbEndAz1
+        GwlbEndRTAssociation1bSubnetId: !GetAtt SubnetStack.Outputs.SubnetGwlbEndAz2
+        PubNat1aRTAssociation1aSubnetId: !GetAtt SubnetStack.Outputs.SubnetNatAz1
+        PubNat1aRTAssociation1bSubnetId: !GetAtt SubnetStack.Outputs.SubnetNatAz2
+        FwLanEniRTAssociation1aSubnetId: !GetAtt SubnetStack.Outputs.SubnetFwLanAz1
+        FwLanEniRTAssociation1bSubnetId: !GetAtt SubnetStack.Outputs.SubnetFwLanAz2
+        ProxyNlbRTAssociatione1aSubnetId: !GetAtt SubnetStack.Outputs.SubnetProxyNlbAz1
+        ProxyNlbRTAssociatione1bSubnetId: !GetAtt SubnetStack.Outputs.SubnetProxyNlbAz2
+        ProxyServerRTAssociation1aSubnetId: !GetAtt SubnetStack.Outputs.SubnetProxyServerAz1
+        ProxyServerRTAssociation1bSubnetId: !GetAtt SubnetStack.Outputs.SubnetProxyServerAz2
+        NlbDlpServerRTAssociation1aSubnetId: !GetAtt SubnetStack.Outputs.SubnetNlbDlpServerAz1
+        NlbDlpServerRTAssociation1bSubnetId: !GetAtt SubnetStack.Outputs.SubnetNlbDlpServerAz2
+        DlpServerRTAssociation1aSubnetId: !GetAtt SubnetStack.Outputs.SubnetDlpServerAz1
+        DlpServerRTAssociation1bSubnetId: !GetAtt SubnetStack.Outputs.SubnetDlpServerAz2
+        MgmtTgwEni1aRTAssociation1aSubnetId: !GetAtt SubnetStack.Outputs.SubnetMgmtTgwEniAz1
+        MgmtTgwEni1aRTAssociation1bSubnetId: !GetAtt SubnetStack.Outputs.SubnetMgmtTgwEniAz2
+      TimeoutInMinutes: 30
+      Tags:
+        - Key: Name
+          Value: SBI-Route-Table-Stack
+        - Key: Environment
+          Value: !Ref Environment
+
+  #subnet-Route Table Stack
+  SubnetRouteStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn:
+    - RouteTableStack
+    - TGWAttachmentStack
+    Properties:
+      TemplateURL: !Ref TemplateURLSubnetRoute  # Replace with your subnet Route template
+      Parameters:
+        Environment: !Ref Environment
+        GwlbEndpointRouteTableAZ1Id: !GetAtt RouteTableStack.Outputs.GwlbEndpointRouteTableAZ1Id
+        GwlbEndpointRouteTableAZ2Id: !GetAtt RouteTableStack.Outputs.GwlbEndpointRouteTableAZ2Id
+        # FwLanEniRTAZ1Id: !GetAtt RouteTableStack.Outputs.FwLanEniRTAZ1Id
+        # FwLanEniRTAZ2Id: !GetAtt RouteTableStack.Outputs.FwLanEniRTAZ2Id
+        ProxyNlbRTAZ1Id: !GetAtt RouteTableStack.Outputs.ProxyNlbRTAZ1Id
+        ProxyNlbRTAZ2Id: !GetAtt RouteTableStack.Outputs.ProxyNlbRTAZ2Id
+        NlbDlpAz1RTId: !GetAtt RouteTableStack.Outputs.NlbDlpAz1RTId
+        NlbDlpAz2RTId: !GetAtt RouteTableStack.Outputs.NlbDlpAz2RTId
+        ProxyServerAz1RTId: !GetAtt RouteTableStack.Outputs.ProxyServerAz1RTId
+        ProxyServerAz2RTId: !GetAtt RouteTableStack.Outputs.ProxyServerAz2RTId
+        MgmtTgwEniAz1RTId: !GetAtt RouteTableStack.Outputs.MgmtTgwEniAz1RTId
+        MgmtTgwEniAz2RTId: !GetAtt RouteTableStack.Outputs.MgmtTgwEniAz2RTId
+        DlpAz1RTId: !GetAtt RouteTableStack.Outputs.DlpAz1RTId
+        DlpAz2RTId: !GetAtt RouteTableStack.Outputs.DlpAz2RTId
+        TransitGatewayId: !Ref TransitGatewayID
+      TimeoutInMinutes: 30
+      Tags:
+        - Key: Name
+          Value: SBI-Ingress-Subnet-Route-Stack
+        - Key: Environment
+          Value: !Ref Environment
+    
+  
+
+  # Gateway Load Balancer and Endpoints Stack
+  GWLBStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: 
+      - VPCStack
+      - SubnetStack
+    Properties:
+      TemplateURL: !Ref TemplateURLGWLB
+      Parameters:
+        Environment: !Ref Environment
+        EgressWebVPC: !GetAtt VPCStack.Outputs.VpcId
+        SubnetGwlbEndAz1: !GetAtt SubnetStack.Outputs.SubnetGwlbEndAz1
+        SubnetGwlbEndAz2: !GetAtt SubnetStack.Outputs.SubnetGwlbEndAz2
+        ResourceName: !Ref ResourceName
+        Owner: !Ref Owner
+        Vendor: !Ref Vendor
+      TimeoutInMinutes: 30
+      Tags:
+        - Key: Name
+          Value: SBI-GWLB-Stack
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+
+
+
+  # Then update your NetworkApplianceStack
+  NetworkApplianceStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: 
+      - VPCStack
+      - SubnetStack
+      - IGWNATStack
+      - SecurityGroupsStack
+      # - EbsEncryptionKey
+
+    Properties:
+      TemplateURL: !Ref TemplateURLNetworkAppliance
+      Parameters:
+        Environment: !Ref Environment
+        EgressWebVPC: !GetAtt VPCStack.Outputs.VpcId
+        SubnetFwLanAz1Id: !GetAtt SubnetStack.Outputs.SubnetFwLanAz1
+        # SubnetFwLanAz2Id: !GetAtt SubnetStack.Outputs.SubnetFwLanAz2
+        # SubnetMgmtTgwEniAz1Id: !GetAtt SubnetStack.Outputs.SubnetMgmtTgwEniAz1
+        # SubnetMgmtTgwEniAz2Id: !GetAtt SubnetStack.Outputs.SubnetMgmtTgwEniAz2
+        EgressWebFwLanAz1SGId: !GetAtt SecurityGroupsStack.Outputs.EgressWebFwLanAz1SGId
+        EgressWebFwLanAz2SGId: !GetAtt SecurityGroupsStack.Outputs.EgressWebFwLanAz2SGId
+        EgressWebFwMgmtAz1SGId: !GetAtt SecurityGroupsStack.Outputs.EgressWebFwMgmtAz1SGId
+        EgressWebFwMgmtAz2SGId: !GetAtt SecurityGroupsStack.Outputs.EgressWebFwMgmtAz2SGId
+        # EgressWebProxySGId: !GetAtt SecurityGroupsStack.Outputs.EgressWebProxySGId
+        # EgressWebDlpSGId: !GetAtt SecurityGroupsStack.Outputs.EgressWebDlpSGId
+        ResourceName: !Ref ResourceName
+        # EbsKmsArn: !GetAtt EbsEncryptionKeyArn   # Pass the KMS key ARN
+        Owner: !Ref Owner
+        Vendor: !Ref Vendor
+      TimeoutInMinutes: 30
+      Tags:
+        - Key: Name
+          Value: SBI-Network-Appliance-Stack
+        - Key: Environment
+          Value: !Ref Environment
+
+
+  # NLB stack in the Resource
+  NetworkLoadBalancerStack:
+    Type: AWS::CloudFormation::Stack
+    DependsOn: 
+      - VPCStack
+      - SubnetStack
+      - SecurityGroupsStack
+    Properties:
+      TemplateURL: !Ref TemplateURLNLB
+      Parameters:
+        Environment: !Ref Environment
+        VpcId: !GetAtt VPCStack.Outputs.VpcId
+        ResourceName: !Ref ResourceName
+        Owner: !Ref Owner
+        ProxyNlbName: !Sub "${ResourceName}-proxy-nlb"
+        DlpNlbName: !Sub "${ResourceName}-dlp-nlb"
+        ProxySubnetsAz1: !GetAtt SubnetStack.Outputs.SubnetProxyNlbAz1
+        ProxySubnetsAz2: !GetAtt SubnetStack.Outputs.SubnetProxyNlbAz2
+        DlpSubnetsAz1: !GetAtt SubnetStack.Outputs.SubnetNlbDlpServerAz1
+        DlpSubnetsAz2: !GetAtt SubnetStack.Outputs.SubnetNlbDlpServerAz2
+        ProxyTargetPort: 80
+        DlpTargetPort: 80
+      TimeoutInMinutes: 30
+      Tags:
+        - Key: Name
+          Value: SBI-NLB-Stack
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Vendor
+          Value: !Ref Vendor
+
+
+
+
+
+
+        
+Outputs:
+  VpcId:
+    Description: VPC ID
+    Value: !GetAtt VPCStack.Outputs.VpcId
+    Export:
+      Name: !Sub ${AWS::StackName}-VpcId
+
+  VpcCidr:
+    Description: VPC CIDR Block
+    Value: !GetAtt VPCStack.Outputs.VpcCidr
+    Export:
+      Name: !Sub ${AWS::StackName}-VpcCidr
+
+  InternetGatewayId:
+    Description: Internet Gateway ID
+    Value: !GetAtt IGWNATStack.Outputs.IgwId
+    Export:
+      Name: !Sub ${AWS::StackName}-IgwId
+
+  NatGatewayAz1:
+    Description: NAT Gateway AZ1 ID
+    Value: !GetAtt IGWNATStack.Outputs.NatGatewayAz1
+    Export:
+      Name: !Sub ${AWS::StackName}-NatGatewayAz1Id
+
+  NatGatewayAz2:
+    Description: NAT Gateway AZ2 ID
+    Value: !GetAtt IGWNATStack.Outputs.NatGatewayAz2
+    Export:
+      Name: !Sub ${AWS::StackName}-NatGatewayAz2Id
+
+  EipNatAz1PublicIP:
+    Description: NAT Gateway AZ1 Public IP
+    Value: !GetAtt IGWNATStack.Outputs.EipNatAz1PublicIP
+    Export:
+      Name: !Sub ${AWS::StackName}-EipNatAz1PublicIP
+
+  EipNatAz2PublicIP:
+    Description: NAT Gateway AZ2 Public IP
+    Value: !GetAtt IGWNATStack.Outputs.EipNatAz2PublicIP
+    Export:
+      Name: !Sub ${AWS::StackName}-EipNatAz2PublicIP
+
+  TGWAttachmentId:
+    Description: Transit Gateway Attachment ID
+    Value: !GetAtt TGWAttachmentStack.Outputs.EgressWebTGWAttachmentId
+    Export:
+      Name: !Sub ${AWS::StackName}-TGWAttachmentId
+
+  ProxyNlbSecurityGroupId:
+    Description: Security Group ID for Proxy NLB
+    Value: !GetAtt SecurityGroupsStack.Outputs.EgressWebProxyNlbSGId
+    Export:
+      Name: !Sub ${AWS::StackName}-ProxyNlbSGId
+
+  DlpNlbSecurityGroupId:
+    Description: Security Group ID for DLP NLB
+    Value: !GetAtt SecurityGroupsStack.Outputs.EgressWebDlpNlbSGId
+    Export:
+      Name: !Sub ${AWS::StackName}-DlpNlbSGId
+
+  FwLanAz1SecurityGroupId:
+    Description: Security Group ID for FW LAN AZ1
+    Value: !GetAtt SecurityGroupsStack.Outputs.EgressWebFwLanAz1SGId
+    Export:
+      Name: !Sub ${AWS::StackName}-FwLanAz1SGId
+
+  FwLanAz2SecurityGroupId:
+    Description: Security Group ID for FW LAN AZ2
+    Value: !GetAtt SecurityGroupsStack.Outputs.EgressWebFwLanAz2SGId
+    Export:
+      Name: !Sub ${AWS::StackName}-FwLanAz2SGId
+
+  FwMgmtAz1SecurityGroupId:
+    Description: Security Group ID for FW MGMT AZ1
+    Value: !GetAtt SecurityGroupsStack.Outputs.EgressWebFwMgmtAz1SGId
+    Export:
+      Name: !Sub ${AWS::StackName}-FwMgmtAz1SGId
+
+  FwMgmtAz2SecurityGroupId:
+    Description: Security Group ID for FW MGMT AZ2
+    Value: !GetAtt SecurityGroupsStack.Outputs.EgressWebFwMgmtAz2SGId
+    Export:
+      Name: !Sub ${AWS::StackName}-FwMgmtAz2SGId
+
+  ProxySecurityGroupId:
+    Description: Security Group ID for Proxy
+    Value: !GetAtt SecurityGroupsStack.Outputs.EgressWebProxySGId
+    Export:
+      Name: !Sub ${AWS::StackName}-ProxySGId
+
+  DlpSecurityGroupId:
+    Description: Security Group ID for DLP
+    Value: !GetAtt SecurityGroupsStack.Outputs.EgressWebDlpSGId
+    Export:
+      Name: !Sub ${AWS::StackName}-DlpSGId
+
+  SubnetNatAz1:
+    Description: NAT Gateway Subnet AZ1 ID
+    Value: !GetAtt SubnetStack.Outputs.SubnetNatAz1
+    Export:
+      Name: !Sub ${AWS::StackName}-SubnetNatAz1
+
+  SubnetNatAz2:
+    Description: NAT Gateway Subnet AZ2 ID
+    Value: !GetAtt SubnetStack.Outputs.SubnetNatAz2
+    Export:
+      Name: !Sub ${AWS::StackName}-SubnetNatAz2
+
+  SubnetGwlbEndAz1:
+    Description: GWLB Endpoint Subnet AZ1 ID
+    Value: !GetAtt SubnetStack.Outputs.SubnetGwlbEndAz1
+    Export:
+      Name: !Sub ${AWS::StackName}-SubnetGwlbEndAz1
+
+  SubnetGwlbEndAz2:
+    Description: GWLB Endpoint Subnet AZ2 ID
+    Value: !GetAtt SubnetStack.Outputs.SubnetGwlbEndAz2
+    Export:
+      Name: !Sub ${AWS::StackName}-SubnetGwlbEndAz2
+
+  # GWLB Outputs
+  GatewayLoadBalancerArn:
+    Description: Gateway Load Balancer ARN
+    Value: !GetAtt GWLBStack.Outputs.GatewayLoadBalancerArn
+    Export:
+      Name: !Sub ${AWS::StackName}-GWLBArn
+
+  GWLBTargetGroupArn:
+    Description: Gateway Load Balancer Target Group ARN
+    Value: !GetAtt GWLBStack.Outputs.GWLBTargetGroupArn
+    Export:
+      Name: !Sub ${AWS::StackName}-GWLBTargetGroupArn
+
+  GWLBEndpointServiceId:
+    Description: Gateway Load Balancer Endpoint Service ID
+    Value: !GetAtt GWLBStack.Outputs.GWLBEndpointServiceId
+    Export:
+      Name: !Sub ${AWS::StackName}-GWLBEndpointServiceId
+
+  GWLBEndpointServiceName:
+    Description: Gateway Load Balancer Endpoint Service Name
+    Value: !GetAtt GWLBStack.Outputs.GWLBEndpointServiceName
+    Export:
+      Name: !Sub ${AWS::StackName}-GWLBEndpointServiceName
+
+  GWLBEndpointAZ1Id:
+    Description: GWLB Endpoint ID for AZ1
+    Value: !GetAtt GWLBStack.Outputs.GWLBEndpointAZ1Id
+    Export:
+      Name: !Sub ${AWS::StackName}-GWLBEndpointAz1Id
+
+  GWLBEndpointAZ2Id:
+    Description: GWLB Endpoint ID for AZ2
+    Value: !GetAtt GWLBStack.Outputs.GWLBEndpointAZ2Id
+    Export:
+      Name: !Sub ${AWS::StackName}-GWLBEndpointAz2Id
+
+  
+
+  # Network-appliance-ouputs
+
+  
+  # KmsKeyId:
+  #   Description: ID of the created KMS key
+  #   Value: !Ref EbsKmsKey
+  #   Export:
+  #     Name: !Sub ${AWS::StackName}-KmsKeyId
+
+  # KmsKeyArn:
+  #   Description: ARN of the created KMS key
+  #   Value: !GetAtt EbsKmsKey.Arn
+  #   Export:
+  #     Name: !Sub ${AWS::StackName}-KmsKeyArn
+
+  # KmsKeyAlias:
+  #   Description: Alias of the created KMS key
+  #   Value: !Ref EbsKmsKeyAlias
+  #   Export:
+  #     Name: !Sub ${AWS::StackName}-
+  
+  # NetworkAppliancesStackOutput:
+  #   Value: !Ref NetworkAppliancesStack
+  #   Description: Stack ID for Network Appliances Stack
+    
+
+  # SubnetMgmtTgwEniAz1:  # This should match what you're referencing
+  #   Description: Management TGW ENI Subnet AZ1
+  #   Value: !Ref SubnetMgmtTgwEniAz1
+  #   Export:
+  #     Name: !Sub ${AWS::StackName}-SubnetMgmtTgwEniAz1
+
+  #nlb
+  ProxyNlbArn:
+    Description: ARN of the Proxy Network Load Balancer
+    Value: !GetAtt NetworkLoadBalancerStack.Outputs.ProxyNlbArn
+    Export:
+      Name: !Sub ${AWS::StackName}-ProxyNlbArn
+
+  DlpNlbArn:
+    Description: ARN of the DLP Network Load Balancer
+    Value: !GetAtt NetworkLoadBalancerStack.Outputs.DlpNlbArn
+    Export:
+      Name: !Sub ${AWS::StackName}-DlpNlbArn
+
+  ProxyTargetGroupArn:
+    Description: ARN of the Proxy Target Group
+    Value: !GetAtt NetworkLoadBalancerStack.Outputs.ProxyTargetGroupArn
+    Export:
+      Name: !Sub ${AWS::StackName}-ProxyTargetGroupArn
+
+  DlpTargetGroupArn:
+    Description: ARN of the DLP Target Group
+    Value: !GetAtt NetworkLoadBalancerStack.Outputs.DlpTargetGroupArn
+    Export:
+      Name: !Sub ${AWS::StackName}-DlpTargetGroupArn
