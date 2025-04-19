@@ -1,0 +1,389 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Network Appliances Infrastructure Stack including Firewall, Proxy, and DLP instances'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: development
+    AllowedValues:
+      - development
+      - staging
+      - production
+    Description: Environment name for resource tagging  
+
+  EgressWebVPC:
+    Type: String
+    Description: VPC ID  
+
+  ResourceName:
+    Type: String
+    Default: Network Appliances
+    Description: Base name for resources
+
+  Owner:
+    Type: String
+    Description: Owner tag value
+
+  Vendor:
+    Type: String
+    Default: ACC
+    Description: Vendor tag value  
+
+   # Common key pair for all the server
+  DefaultKeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Name of an existing EC2 Key Pair
+    Default: Iac-network-key
+  
+  # Firewall Parameters
+  FwAmiId:
+    Type: AWS::EC2::Image::Id
+    Description: AMI ID for Firewall instances
+    Default: ami-002f6e91abff6eb96
+
+  FwInstanceType:
+    Type: String
+    Description: Instance type for Firewall instances
+    Default: t2.micro
+
+
+  # # Proxy Parameters
+  ProxyAmiId:
+    Type: AWS::EC2::Image::Id
+    Description: AMI ID for Proxy instances
+    Default: ami-002f6e91abff6eb96
+
+  ProxyInstanceType:
+    Type: String
+    Description: Instance type for Proxy
+    Default: t2.micro
+
+
+  # # DLP Parameters
+  DlpAmiId:
+    Type: AWS::EC2::Image::Id
+    Description: AMI ID for DLP instances
+    Default: ami-002f6e91abff6eb96
+
+  DlpInstanceType:
+    Type: String
+    Description: Instance type for DLP
+    Default: t2.micro
+
+
+  # Network Parameters
+  SubnetFwLanAz1Id:
+    Type: AWS::EC2::Subnet::Id
+    Description: Private subnet ID for FW LAN in AZ1
+
+  SubnetProxyServerAz1:
+    Type: AWS::EC2::Subnet::Id
+    Description: Private subnet ID for FW LAN in AZ2
+
+  SubnetDlpServerAz1:
+    Type: AWS::EC2::Subnet::Id
+    Description: Private subnet ID for TGW in AZ1
+
+
+  # Security Groups
+  EgressWebFwLanAz1SGId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: FW LAN AZ1 Security Group ID
+
+  EgressWebFwLanAz2SGId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: FW LAN AZ2 Security Group ID
+
+  EgressWebProxySGId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Proxy Security Group ID
+
+  EgressWebDlpSGId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: DLP Security Group ID
+
+
+Resources:
+  
+  # Firewall Network Interfaces - AZ1
+  FwAz1LanEni:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref SubnetFwLanAz1Id
+      GroupSet: 
+        - !Ref EgressWebFwLanAz1SGId
+      SourceDestCheck: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourceName}-fw-az1-lan-eni
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+
+  FwAz2LanEni:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref SubnetFwLanAz1Id
+      GroupSet: 
+        - !Ref EgressWebFwLanAz2SGId
+      SourceDestCheck: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourceName}-fw-az1-lan-eni
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+
+# Proxy Network Interfaces - AZ1
+  ProxyAz1PrimaryEni:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref SubnetProxyServerAz1
+      GroupSet: 
+        - !Ref EgressWebProxySGId
+      SourceDestCheck: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourceName}-proxy-az1-primary-eni
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+
+  ProxyAz1SecondaryEni:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref SubnetProxyServerAz1
+      GroupSet: 
+        - !Ref EgressWebProxySGId
+      SourceDestCheck: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourceName}-proxy-az1-secondary-eni
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+
+ # DLP Network Interfaces - AZ1
+  DlpAz1PrimaryEni:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref SubnetDlpServerAz1
+      GroupSet: 
+        - !Ref EgressWebDlpSGId
+      SourceDestCheck: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourceName}-dlp-az1-primary-eni
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+
+  DlpAz1SecondaryEni:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      SubnetId: !Ref SubnetDlpServerAz1
+      GroupSet: 
+        - !Ref EgressWebDlpSGId
+      SourceDestCheck: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourceName}-dlp-az1-secondary-eni
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+
+  #EBS KEY        
+  EbsEncryptionKey:
+    Type: AWS::KMS::Key
+    DeletionPolicy: Retain
+    Properties:
+      Description: KMS key for EBS volume encryption
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: '2012-10-17'
+        Id: ebs-encryption-key
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: '*'
+          - Sid: Allow EC2 to use the key
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey*
+              - kms:CreateGrant
+              - kms:ReEncrypt*
+              - kms:DescribeKey
+            Resource: '*'
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourceName}-ebs-encryption-key
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+
+  EbsEncryptionKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub alias/${ResourceName}-ebs-encryption-key
+      TargetKeyId: !Ref EbsEncryptionKey
+  
+  # Firewall Instance - AZ1
+  FwAz1Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref FwAmiId
+      InstanceType: !Ref FwInstanceType
+      KeyName: !Ref DefaultKeyName
+      NetworkInterfaces:
+        - NetworkInterfaceId: !Ref FwAz1LanEni
+          DeviceIndex: 0
+        - NetworkInterfaceId: !Ref FwAz2LanEni
+          DeviceIndex: 1
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 8
+            VolumeType: gp3
+            DeleteOnTermination: true
+            Encrypted: true
+            KmsKeyId: !Ref EbsEncryptionKey
+        - DeviceName: /dev/sdb
+          Ebs:
+            VolumeSize: 30
+            VolumeType: gp3
+            DeleteOnTermination: true
+            Encrypted: true
+            KmsKeyId: !Ref EbsEncryptionKey
+      # MetadataOptions:
+      #   HttpEndpoint: enabled
+      #   HttpTokens: required
+      #   HttpPutResponseHopLimit: 1
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourceName}-fw-az1
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+
+# Proxy Instance - AZ1
+  ProxyAz1Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref ProxyAmiId
+      InstanceType: !Ref ProxyInstanceType
+      KeyName: !Ref DefaultKeyName
+      NetworkInterfaces:
+        - NetworkInterfaceId: !Ref ProxyAz1PrimaryEni
+          DeviceIndex: 0
+        - NetworkInterfaceId: !Ref ProxyAz1SecondaryEni
+          DeviceIndex: 1
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 30
+            VolumeType: gp3
+            DeleteOnTermination: true
+            Encrypted: true
+            KmsKeyId: !Ref EbsEncryptionKey
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourceName}-proxy-az1
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+
+ # DLP Instance - AZ1
+  DlpAz1Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref DlpAmiId
+      InstanceType: !Ref DlpInstanceType
+      KeyName: !Ref DefaultKeyName
+      NetworkInterfaces:
+        - NetworkInterfaceId: !Ref DlpAz1PrimaryEni
+          DeviceIndex: 0
+        - NetworkInterfaceId: !Ref DlpAz1SecondaryEni
+          DeviceIndex: 1
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 30
+            VolumeType: gp3
+            DeleteOnTermination: true
+            Encrypted: true
+            KmsKeyId: !Ref EbsEncryptionKey
+      Tags:
+        - Key: Name
+          Value: !Sub ${ResourceName}-dlp-az1
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Owner
+          Value: !Ref Owner
+
+Outputs:
+  FwAz1LanIp:
+    Description: Private IP of Firewall AZ1 LAN interface
+    Value: !GetAtt FwAz1LanEni.PrimaryPrivateIpAddress
+
+  FwAz2LanIp:
+    Description: Private IP of Firewall AZ2 LAN interface
+    Value: !GetAtt FwAz2LanEni.PrimaryPrivateIpAddress
+
+  FwAz1InstanceId:
+    Description: Instance ID of Firewall AZ1
+    Value: !Ref FwAz1Instance
+  
+  ProxyAz1PrimaryIp:
+    Description: Private IP of Proxy AZ1 Primary interface
+    Value: !GetAtt ProxyAz1PrimaryEni.PrimaryPrivateIpAddress
+
+  ProxyAz1SecondaryIp:
+    Description: Private IP of Proxy AZ1 Secondary interface
+    Value: !GetAtt ProxyAz1SecondaryEni.PrimaryPrivateIpAddress
+
+  ProxyAz1InstanceId:
+    Description: Instance ID of Proxy AZ1
+    Value: !Ref ProxyAz1Instance
+
+  DlpAz1PrimaryIp:
+    Description: Private IP of DLP AZ1 Primary interface
+    Value: !GetAtt DlpAz1PrimaryEni.PrimaryPrivateIpAddress
+
+  DlpAz1SecondaryIp:
+    Description: Private IP of DLP AZ1 Secondary interface
+    Value: !GetAtt DlpAz1SecondaryEni.PrimaryPrivateIpAddress
+
+  DlpAz1InstanceId:
+    Description: Instance ID of DLP AZ1
+    Value: !Ref DlpAz1Instance
+
+
+
+    # Add to the Outputs section
+  EbsEncryptionKeyId:
+    Description: ID of the KMS key used for EBS encryption
+    Value: !Ref EbsEncryptionKey
+
+  EbsEncryptionKeyArn:
+    Description: ARN of the KMS key used for EBS encryption
+    Value: !GetAtt EbsEncryptionKey.Arn
+
+  EbsEncryptionKeyAlias:
+    Description: Alias of the KMS key used for EBS encryption
+    Value: !Ref EbsEncryptionKeyAlias
+  
