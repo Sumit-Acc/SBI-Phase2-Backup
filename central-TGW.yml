@@ -1,0 +1,50 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: 'SBI Network Infrastructure - AWS Transit gateway with its attachments'
+
+Parameters:
+  ResourceName:
+    Type: String
+    Default: SBI-Network-TGW
+    Description: Centralized transit gateway for SBI Network account 
+
+  Environment:
+    Type: String
+    AllowedValues:
+      - development
+      - staging
+      - production
+    Description: Environment name for resource tagging.
+
+  Owner:
+    Type: String
+    Default: "SBI-Network-Team"
+    Description: Owner tag value.
+
+  Vendor:
+    Type: String
+    Default: "ACC"
+    Description: Owner tag value
+
+
+Resources:
+  #Transit Gateway for SBI Network Environment
+  SBITransitGateway:
+    Type: AWS::EC2::TransitGateway
+    Properties:
+      AmazonSideAsn: 64512
+      AutoAcceptSharedAttachments: 'disable'
+      DefaultRouteTableAssociation: 'enable'
+      DefaultRouteTablePropagation: 'enable'
+      DnsSupport: 'enable'
+      VpnEcmpSupport: 'enable'
+      Tags:
+        - Key: Name
+          Value: 'sbi-network-tgw'
+      TransitGatewayCidrBlocks: 
+        - "10.53.70.0/24"
+      
+Outputs:
+  SBITransitGatewayId:  
+    Description: Transit Gateway for SBI Network
+    Value: !Ref SBITransitGateway
+    
